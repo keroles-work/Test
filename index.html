@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thief vs Police: English Escape</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<style>
+:root{--bg:#0b1030;--card:#171d4a;--ink:#f2f4ff;--acc:#6c5cff;--blue:#26c6ff;--gold:#ffb629;--bad:#ff5470;--good:#2ee59d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#0b1030}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+#app{max-width:520px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;padding:10px}
+h1{font-size:26px;margin:6px 0;color:var(--gold);text-align:center}
+.card{background:var(--card);border-radius:16px;padding:14px;margin:8px 0}
+.btn{background:var(--gold);color:#1a1200;border:0;border-radius:12px;padding:14px;font-size:17px;font-weight:700;width:100%;cursor:pointer;margin:5px 0}
+.btn.alt{background:var(--acc);color:#fff}
+.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--blue)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.hud{display:flex;justify-content:space-between;font-weight:700;font-size:15px;padding:2px 4px}
+canvas{width:100%;flex:1;min-height:0;border-radius:14px;background:#111;touch-action:none;display:block}
+.bar{height:10px;background:#0006;border-radius:6px;overflow:hidden;margin:4px 0}
+.bar i{display:block;height:100%;width:50%;background:linear-gradient(90deg,var(--bad),var(--gold),var(--good));transition:width .3s}
+#q{font-size:19px;font-weight:700;text-align:center;margin:6px 0;min-height:26px}
+#ans{display:flex;gap:6px;align-items:center;margin-top:4px}#ans input{flex:1;min-width:0;padding:12px;font-size:18px;border-radius:12px;border:2px solid var(--acc);background:#fff;color:#000;text-align:center}#ans .opt{padding:10px 14px}#fb{min-height:24px;text-align:center;font-weight:800;font-size:17px}#fb.ok{color:var(--good)}#fb.no{color:var(--bad)}#hint{text-align:center;letter-spacing:3px;color:var(--blue);min-height:18px;font-size:15px}
+.opt{background:var(--card);color:var(--ink);border:2px solid var(--acc);border-radius:12px;padding:12px;font-size:16px;cursor:pointer}
+.opt.ok{background:var(--good);color:#002}.opt.no{background:var(--bad)}
+input.sp{grid-column:1/3;padding:12px;font-size:18px;border-radius:12px;border:2px solid var(--acc);background:#fff;color:#000;text-align:center}
+.ar{direction:rtl;unicode-bidi:plaintext}
+.hidden{display:none!important}
+.center{text-align:center}
+.big{font-size:44px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="home" class="center">
+  <h1>🚓 Thief vs Police<br>English Escape</h1>
+  <div class="big">🥷💨 🚔</div>
+  <div class="card">
+    <b id="t_how">How to play</b>
+    <p id="t_rules" style="margin:6px 0 0"></p>
+  </div>
+  <div class="card" id="best"></div>
+  <button class="btn" data-lvl="vocab" id="b1"></button>
+  <button class="btn alt" data-lvl="grammar" id="b2"></button>
+  <button class="btn alt" data-lvl="listen" id="b3"></button>
+  <button class="btn alt" id="langBtn">العربية / English</button>
+</section>
+
+<section id="game" class="hidden" style="display:flex;flex-direction:column;height:100%">
+  <div class="hud"><span id="hScore">⭐0</span><span id="hTime">⏱10</span><span id="hLives">❤❤❤</span><span id="hStreak">🔥0</span><button id="pauseBtn" class="opt" style="padding:2px 10px" aria-label="Pause">⏸</button></div>
+  <div class="bar" title="Distance"><i id="gap"></i></div>
+  <canvas id="cv" width="360" height="300" aria-label="Chase road"></canvas>
+  <div id="q"></div>
+  <div id="hint"></div><button class="opt hidden" id="replay" type="button"></button><div id="fb" aria-live="polite"></div><div id="ans" dir="ltr"><button class="opt" id="bL" type="button" aria-label="Move left" tabindex="-1">◀</button><input id="inp" type="text" inputmode="text" enterkeyhint="send" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Your answer"><button class="opt" id="bR" type="button" aria-label="Move right" tabindex="-1">▶</button></div>
+</section>
+
+<section id="result" class="hidden center">
+  <h1 id="rTitle"></h1>
+  <div class="big" id="rIcon"></div>
+  <div class="card" id="rStats"></div>
+  <button class="btn" id="retry"></button>
+  <button class="btn alt" id="toHome"></button>
+</section>
+
+</div>
+<script>
+"use strict";
+/* ---------- Data (add more questions here) ---------- */
+const V=[["apple","تفاحة"],["house","منزل"],["water","ماء"],["book","كتاب"],["friend","صديق"],["school","مدرسة"],["car","سيارة"],["happy","سعيد"],["big","كبير"],["small","صغير"],["food","طعام"],["night","ليل"],["morning","صباح"],["city","مدينة"],["window","نافذة"],["door","باب"],["family","عائلة"],["market","سوق"],["run","يركض"],["police","شرطة"],["thief","لص"],["fast","سريع"],["slow","بطيء"],["money","مال"]];
+const G=[
+["She ___ to school every day.",["goes","go","going","went"],0],
+["I ___ breakfast now.",["am eating","eat","ate","will eat"],0],
+["They ___ football yesterday.",["played","play","playing","will play"],0],
+["We ___ to Amman tomorrow.",["will travel","travelled","travel","are traveled"],0],
+["He ___ coffee every morning.",["drinks","drink","drinking","drank"],0],
+["Look! It ___ now.",["is raining","rains","rained","will rains"],0],
+["I ___ my homework last night.",["finished","finish","am finishing","will finished"],0],
+["She ___ her friend next week.",["will visit","visited","visits","visiting"],0],
+["Water ___ at 100 degrees.",["boils","boil","is boil","boiled"],0],
+["The kids ___ in the garden at the moment.",["are playing","play","played","plays"],0],
+["Last year, we ___ a new car.",["bought","buy","buys","will bought"],0],
+["Correct the sentence: He go to work.",["He goes to work.","He going to work.","He gone to work.","He go works."],0],
+["Correct the sentence: She don't like tea.",["She doesn't like tea.","She not like tea.","She didn't likes tea.","She don't likes tea."],0],
+["Correct the sentence: I am agree.",["I agree.","I agrees.","I am agreeing.","I did agree."],0],
+["Correct the sentence: They was happy.",["They were happy.","They is happy.","They are was happy.","They been happy."],0],
+["Correct the sentence: He will goes home.",["He will go home.","He will went home.","He wills go home.","He will going home."],0],
+["My parents ___ TV every evening.",["watch","watches","watching","is watch"],0],
+["It ___ tomorrow, I think.",["will snow","snowed","snows","is snowed"],0],
+["I ___ a letter right now.",["am writing","write","wrote","will wrote"],0],
+["She ___ the door ten minutes ago.",["opened","opens","is opening","will opened"],0]];
+const L=["police","street","thief","teacher","library","orange","window","friend","village","morning","country","kitchen","pencil","garden","doctor","bridge","yellow","number","family","school"];
+
+/* ---------- i18n ---------- */
+const TXT={en:{how:"How to play",rules:"Type each answer and press Enter to speed up! Use the ←/→ keys, the arrow buttons or swipe to change lanes and dodge cones. Esc pauses. Wrong or late answers let the police catch up. Reach the finish line!",l1:"Level 1 — Vocabulary (Easy)",l2:"Level 2 — Grammar (Medium)",l3:"Level 3 — Listening (Hard)",win:"Victory!",lose:"Busted!",retry:"Retry",home:"Home",best:"Best score",acc:"Accuracy",xp:"XP earned",coins:"Coins",type:"Type what you hear",speak:"🔊 Replay",ph:"Type your answer, press Enter",tr:"Translate to English",ok:"Correct!",no:"Try Again!"},
+ar:{how:"كيف تلعب",rules:"اكتب كل إجابة واضغط Enter لتزيد سرعتك! استخدم ←/→ أو الأزرار أو اسحب لتغيير المسار وتفادي العوائق. Esc للإيقاف المؤقت. الإجابة الخاطئة أو المتأخرة تقرّب الشرطي. صل إلى خط النهاية!",l1:"المستوى 1 — المفردات (سهل)",l2:"المستوى 2 — القواعد (متوسط)",l3:"المستوى 3 — الاستماع (صعب)",win:"فزت!",lose:"تم القبض عليك!",retry:"إعادة",home:"الرئيسية",best:"أفضل نتيجة",acc:"الدقة",xp:"نقاط الخبرة",coins:"العملات",type:"اكتب ما تسمعه",speak:"🔊 إعادة",ph:"اكتب إجابتك ثم اضغط Enter",tr:"ترجم إلى الإنجليزية",ok:"صحيح!",no:"حاول مجدداً!"}};
+let lang="en",lvl="vocab";
+const $=id=>document.getElementById(id), t=k=>TXT[lang][k];
+const save=()=>{try{localStorage.setItem("tvp",JSON.stringify(P))}catch(e){}};
+let P={best:{},xp:0,coins:0};
+try{P=Object.assign(P,JSON.parse(localStorage.getItem("tvp")||"{}"))}catch(e){}
+function ui(){
+  document.documentElement.dir=lang==="ar"?"rtl":"ltr";
+  $("t_how").textContent=t("how");$("t_rules").textContent=t("rules");
+  $("b1").textContent=t("l1");$("b2").textContent=t("l2");$("b3").textContent=t("l3");
+  $("retry").textContent=t("retry");$("toHome").textContent=t("home");
+  $("best").textContent=`${t("best")}: 📖 ${P.best.vocab||0} · ✏️ ${P.best.grammar||0} · 🎧 ${P.best.listen||0}  |  XP ${P.xp} · 🪙 ${P.coins}`;
+}
+function show(id){["home","game","result"].forEach(s=>{$(s).classList.toggle("hidden",s!==id)});$("game").style.display=id==="game"?"flex":"none"}
+
+/* ---------- Game state ---------- */
+const cv=$("cv"),cx=cv.getContext("2d");
+const W=360,H=300,LANES=3,LW=W/LANES;
+let S,raf,last,qTimer,cur,paused=false;
+const FINISH=2600; // distance units
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+function start(l){
+  lvl=l;
+  S={lane:1,x:LW*1.5,dist:0,speed:140,gap:160,score:0,lives:3,streak:0,right:0,total:0,over:false,obs:[],spawn:0,off:0,t:10,qi:0,flash:0,start:performance.now(),pool:shuffle(l==="vocab"?V:l==="grammar"?G:L)};
+  paused=false;show("game");nextQ();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+}
+function beep(f,d=.1,ty="square"){try{const a=beep.c||(beep.c=new (window.AudioContext||window.webkitAudioContext)());const o=a.createOscillator(),g=a.createGain();o.type=ty;o.frequency.value=f;g.gain.value=.05;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}catch(e){}}
+function say(w){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(w);u.lang="en-US";u.rate=.85;speechSynthesis.speak(u)}catch(e){}}
+
+/* ---------- Questions ---------- */
+const inp=$("inp");
+const norm=s=>String(s).toLowerCase().replace(/[’‘`]/g,"'").replace(/[.,?!]/g,"").replace(/\s+/g," ").trim();
+inp.addEventListener("input",()=>{const f=inp.value.replace(/[^A-Za-z' ’\-.,?!]/g,"");if(f!==inp.value)inp.value=f});
+$("replay").onclick=()=>{say(cur.ans);inp.focus({preventScroll:true})};
+["bL","bR","pauseBtn","replay"].forEach(id=>$(id).addEventListener("mousedown",e=>e.preventDefault()));
+$("bL").onclick=()=>go(-1);$("bR").onclick=()=>go(1);
+function fbk(ok,extra){const f=$("fb");f.className=ok?"ok":"no";f.textContent=ok?t("ok"):t("no")+(extra?"  →  "+extra:"")}
+function nextQ(){
+  const d=S.pool[S.qi++%S.pool.length];S.t=lvl==="listen"?12:10;S.qStart=performance.now();S.locked=false;
+  $("fb").textContent="";$("fb").className="";$("hint").textContent="";$("replay").classList.add("hidden");
+  if(lvl==="vocab"){
+    cur={ans:d[0]};$("q").textContent=`${t("tr")}: ${d[1]}`;
+    $("hint").textContent=[...d[0]].map(()=>"_").join(" ");
+  }else if(lvl==="grammar"){
+    cur={ans:d[1][d[2]]};$("q").textContent=d[0];
+  }else{
+    cur={ans:d};$("q").textContent=t("type")+" 🔊";say(d);
+    $("replay").textContent=t("speak");$("replay").classList.remove("hidden");
+  }
+  inp.value="";inp.placeholder=t("ph");if(!paused)inp.focus({preventScroll:true});
+}
+function submit(){
+  if(!S||S.over||paused||S.locked)return;
+  const v=norm(inp.value);if(!v)return;
+  const s=S;S.locked=true;const ok=v===norm(cur.ans);S.total++;
+  if(ok){
+    const fast=(performance.now()-S.qStart)<4000;
+    S.right++;S.streak++;S.speed=Math.min(300,S.speed+22);S.gap+=40;
+    S.score+=10+(lvl==="listen"&&fast?5:0)+Math.min(S.streak,5)*2;beep(660);fbk(true);
+  }else{S.streak=0;S.speed=Math.max(90,S.speed-30);S.gap-=55;beep(150,.25,"sawtooth");S.flash=.3;fbk(false,cur.ans)}
+  setTimeout(()=>{if(S===s&&!S.over)nextQ()},ok?600:1600);
+}
+
+/* ---------- Loop ---------- */
+const loop=now=>{
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(!paused&&!S.over)update(dt);
+  draw();
+  if(!S.over)raf=requestAnimationFrame(loop);
+};
+function update(dt){
+  const lvlBoost=lvl==="vocab"?0:lvl==="grammar"?8:16;
+  S.dist+=S.speed*dt;S.off=(S.off+S.speed*dt)%40;
+  S.gap-=(34+lvlBoost+S.dist/150)*dt;       // police pressure grows over time
+  S.gap+=(S.speed-140)*dt*.35;
+  if(!S.locked)S.t-=dt;
+  if(S.t<=0&&!S.locked){const s=S;S.locked=true;S.streak=0;S.speed=Math.max(90,S.speed-35);S.gap-=40;beep(110,.3,"sawtooth");S.total++;fbk(false,"⏰ "+cur.ans);setTimeout(()=>{if(S===s&&!S.over)nextQ()},1600)}
+  // obstacles
+  S.spawn-=dt;if(S.spawn<=0){S.spawn=Math.max(.7,1.5-S.dist/3500);S.obs.push({l:Math.random()*LANES|0,y:-30})}
+  const tx=LW*(S.lane+.5);S.x+=(tx-S.x)*Math.min(1,dt*14);
+  S.obs.forEach(o=>o.y+=S.speed*dt*1.2);
+  S.obs=S.obs.filter(o=>o.y<H+40);
+  for(const o of S.obs){if(!o.hit&&o.l===S.lane&&o.y>H-110&&o.y<H-60){o.hit=1;S.lives--;S.speed=Math.max(90,S.speed-40);S.gap-=30;S.flash=.3;beep(100,.2,"sawtooth")}}
+  S.flash=Math.max(0,S.flash-dt);
+  S.gap=Math.min(300,S.gap);
+  $("gap").style.width=Math.max(0,Math.min(100,S.gap/3))+"%";
+  $("hScore").textContent="⭐"+S.score;$("hTime").textContent="⏱"+Math.max(0,Math.ceil(S.t));
+  $("hLives").textContent="❤".repeat(Math.max(0,S.lives));$("hStreak").textContent="🔥"+S.streak;
+  if(S.gap<=0||S.lives<=0)end(false);else if(S.dist>=FINISH)end(true);
+}
+function draw(){
+  cx.fillStyle="#1b2159";cx.fillRect(0,0,W,H);
+  // buildings
+  for(let i=0;i<8;i++){const y=((i*60+S.off*1.5)%(H+60))-60;cx.fillStyle=i%2?"#2a2f7a":"#232873";cx.fillRect(0,y,14,50);cx.fillRect(W-14,y,14,50)}
+  cx.fillStyle="#2c2f45";cx.fillRect(14,0,W-28,H);
+  cx.strokeStyle="#ffe27a";cx.lineWidth=3;cx.setLineDash([18,22]);cx.lineDashOffset=-S.off;
+  for(let i=1;i<LANES;i++){cx.beginPath();cx.moveTo(i*LW,0);cx.lineTo(i*LW,H);cx.stroke()}
+  cx.setLineDash([]);
+  S.obs.forEach(o=>{cx.font="28px serif";cx.textAlign="center";cx.fillText("🚧",LW*(o.l+.5),o.y)});
+  // finish line
+  const fy=H-110-(FINISH-S.dist)*1.0;if(fy>-20&&fy<H){cx.fillStyle="#fff";for(let i=0;i<18;i++)if(i%2===0)cx.fillRect(14+i*19,fy,19,10)}
+  // police (distance based)
+  const py=Math.min(H+10,H-30+Math.max(0,S.gap)*.9);
+  const blink=((performance.now()/150)|0)%2;
+  cx.font="40px serif";cx.textAlign="center";cx.fillText("🚔",S.x,Math.min(H+10,py+10));
+  cx.fillStyle=blink?"rgba(255,0,60,.25)":"rgba(40,120,255,.25)";cx.fillRect(0,H-26,W,26);
+  cx.font="38px serif";cx.fillText("🥷",S.x,H-70);
+  if(S.flash>0){cx.fillStyle=`rgba(255,60,80,${S.flash})`;cx.fillRect(0,0,W,H)}
+}
+function end(win){
+  S.over=true;inp.blur();speechSynthesis&&speechSynthesis.cancel();
+  const acc=S.total?Math.round(S.right/S.total*100):0,xp=S.right*10+(win?50:0),coins=S.right*2+(win?20:0);
+  P.xp+=xp;P.coins+=coins;P.best[lvl]=Math.max(P.best[lvl]||0,S.score);save();ui();
+  beep(win?880:120,.4);
+  $("rTitle").textContent=t(win?"win":"lose");$("rIcon").textContent=win?"🏆💰":"🚔🔒";
+  $("rStats").innerHTML=`⭐ ${S.score}<br>✅ ${S.right}/${S.total}<br>${t("acc")}: ${acc}%<br>${t("xp")}: +${xp}<br>${t("coins")}: +${coins}`;
+  show("result");
+}
+
+/* ---------- Controls ---------- */
+const go=d=>{if(S&&!S.over&&!paused)S.lane=Math.max(0,Math.min(LANES-1,S.lane+d))};
+addEventListener("keydown",e=>{
+  if(!S||$("game").classList.contains("hidden"))return;
+  if(e.key==="ArrowLeft"){e.preventDefault();go(-1)}
+  else if(e.key==="ArrowRight"){e.preventDefault();go(1)}
+  else if(e.key==="Escape")$("pauseBtn").click();
+  else if(e.key==="Enter"&&e.target===inp){e.preventDefault();submit()}
+});
+let tx0=null;
+cv.addEventListener("pointerdown",e=>{tx0=e.clientX});
+cv.addEventListener("pointerup",e=>{if(tx0===null)return;const dx=e.clientX-tx0;
+  if(Math.abs(dx)>25)go(dx>0?1:-1);else{const r=cv.getBoundingClientRect();go(e.clientX<r.left+r.width/2?-1:1)}tx0=null;if(!paused)inp.focus({preventScroll:true})});
+$("pauseBtn").onclick=()=>{if(!S||S.over)return;paused=!paused;$("pauseBtn").textContent=paused?"▶":"⏸";if(!paused){last=performance.now();inp.focus({preventScroll:true})}};
+document.querySelectorAll("[data-lvl]").forEach(b=>b.onclick=()=>start(b.dataset.lvl));
+$("retry").onclick=()=>start(lvl);
+$("toHome").onclick=()=>{show("home");ui()};
+$("langBtn").onclick=()=>{lang=lang==="en"?"ar":"en";ui()};
+ui();show("home");
+</script>
+</body>
+</html>
